@@ -8,15 +8,15 @@
     "name": "Arma Reforger",
     "author": "red_thirten@yahoo.com",
     "uuid": "7c4dc3db-fac9-4d2d-8551-0c266e85cc50",
-    "description": "Experience authentic Cold War combat and join friends in the struggle for a sprawling, 51 km\u00b2 mid-Atlantic island \u2014 or take on the role of Game Master and create your very own scenarios for others to enjoy.",
+    "description": "Experience authentic Cold War combat and join friends in the struggle for a sprawling, 51 km² mid-Atlantic island — or take on the role of Game Master and create your very own scenarios for others to enjoy.",
     "features": [
         "steam_disk_space"
     ],
     "docker_images": {
-        "ghcr.io\/parkervcp\/steamcmd:debian": "ghcr.io\/parkervcp\/steamcmd:debian"
+        "ghcr.io/parkervcp/steamcmd:debian": "ghcr.io/parkervcp/steamcmd:debian"
     },
     "file_denylist": [],
-    "startup": "sed -i 's\/\"true\"\/true\/g; s\/\"false\"\/false\/g' config.json; echo \"${CUSTOM_MESSAGE}\"; .\/ArmaReforgerServer -gproj .\/addons\/data\/ArmaReforger.gproj -config .\/config.json -profile .\/profile -backendlog -nothrow -listScenarios -logStats $(({{LOG_INTERVAL}}*1000)) -maxFPS {{MAX_FPS}} -addonTempDir .\/tmp",
+    "startup": "sed -i 's/\"true\"/true/g; s/\"false\"/false/g' config.json; echo \"${CUSTOM_MESSAGE}\"; ./ArmaReforgerServer -gproj ./addons/data/ArmaReforger.gproj -config ./config.json -profile ./profile -backendlog -nothrow -listScenarios -logStats $(({{LOG_INTERVAL}}*1000)) -maxFPS {{MAX_FPS}} -addonTempDir ./tmp",
     "config": {
         "files": "{\r\n    \"config.json\": {\r\n        \"parser\": \"json\",\r\n        \"find\": {\r\n            \"bindAddress\": \"0.0.0.0\",\r\n            \"bindPort\": \"{{server.build.default.port}}\",\r\n            \"publicAddress\": \"{{server.build.default.ip}}\",\r\n            \"publicPort\": \"{{server.build.default.port}}\",\r\n            \"game.name\": \"{{server.build.env.SERVER_NAME}}\",\r\n            \"game.password\": \"{{server.build.env.SERVER_PASS}}\",\r\n            \"game.passwordAdmin\": \"{{server.build.env.ADMIN_PASS}}\",\r\n            \"game.scenarioId\": \"{{server.build.env.SCENARIO_ID}}\",\r\n            \"game.maxPlayers\": \"{{server.build.env.MAX_PLAYERS}}\",\r\n            \"game.visible\": \"{{server.build.env.VISIBLE}}\",\r\n            \"game.gameProperties.disableThirdPerson\": \"{{server.build.env.DISABLE_THIRD}}\",\r\n            \"game.gameProperties.fastValidation\": true,\r\n            \"game.gameProperties.battlEye\": \"{{server.build.env.BATTLEYE}}\"\r\n        }\r\n    }\r\n}",
         "startup": "{\r\n    \"done\": \"Starting RPL server\"\r\n}",
@@ -25,9 +25,9 @@
     },
     "scripts": {
         "installation": {
-            "script": "#!\/bin\/bash\r\n\r\n## File: Pelican Arma Reforger Egg - egg-arma-reforger.json\r\n## Author: David Wolfe (Red-Thirten)\r\n## Date: 2024\/11\/28\r\n## License: MIT License\r\n## Image to install with is 'ghcr.io\/parkervcp\/installers:debian'\r\n\r\n# Check for valid Steam credentials to download Arma Reforger with (requires valid Steam account)\r\nif [[ \"${STEAM_USER}\" == \"\" ]] || [[ \"${STEAM_USER}\" == \"anonymous\" ]] || [[ \"${STEAM_PASS}\" == \"\" ]]; then\r\n    echo -e \"INSTALLATION ERROR: A valid REAL Steam account is required to download the Arma Reforger Dedicated Server.\"\r\n    echo -e \"\\t(\\\"anonymous\\\" account cannot be used. Game ownership is not required.)\"\r\n    exit 1\r\nfi\r\n\r\n## Download and install SteamCMD\r\nexport HOME=\/mnt\/server\r\ncd \/tmp\r\nmkdir -p $HOME\/steamcmd $HOME\/steamapps\r\ncurl -sSL -o steamcmd.tar.gz https:\/\/steamcdn-a.akamaihd.net\/client\/installer\/steamcmd_linux.tar.gz\r\ntar -xzvf steamcmd.tar.gz -C $HOME\/steamcmd\r\ncd $HOME\/steamcmd\r\n\r\n# SteamCMD fails otherwise for some reason, even running as root.\r\nchown -R root:root \/mnt\r\n\r\n# Install\/Verify game server using SteamCMD\r\n.\/steamcmd.sh +force_install_dir $HOME \"+login \\\"${STEAM_USER}\\\" \\\"${STEAM_PASS}\\\"\" $( [[ \"${WINDOWS_INSTALL}\" == \"1\" ]] && printf %s '+@sSteamCmdForcePlatformType windows' ) +app_update ${SRCDS_APPID} +app_update 1007 $( [[ -z ${SRCDS_BETAID} ]] || printf %s \"-beta ${SRCDS_BETAID}\" ) $( [[ -z ${SRCDS_BETAPASS} ]] || printf %s \"-betapassword ${SRCDS_BETAPASS}\" ) validate +quit\r\n\r\n# Set up 32 and 64 bit libraries\r\nmkdir -p \/mnt\/server\/.steam\/sdk{32,64}\r\ncp -v linux32\/steamclient.so \/mnt\/server\/.steam\/sdk32\/steamclient.so\r\ncp -v linux64\/steamclient.so \/mnt\/server\/.steam\/sdk64\/steamclient.so\r\n\r\n## Arma Reforger setup\r\n# Check for successful installation\r\nif [[ ! -f $HOME\/ArmaReforgerServer ]]; then\r\n    echo -e \"\\n\\nSteamCMD failed to install the Arma Reforger Dedicated Server!\"\r\n    echo -e \"\\tTry reinstalling the server again.\\n\"\r\n    exit 1\r\nfi\r\n\r\nmkdir -p $HOME\/profile $HOME\/tmp\r\n\r\necho -e 'Creating default \"config.json\" configuration file...'\r\ncat > $HOME\/config.json << EOF\r\n{\r\n\t\"bindAddress\": \"0.0.0.0\",\r\n\t\"bindPort\": ${SERVER_PORT},\r\n\t\"publicAddress\": \"${SERVER_IP}\",\r\n\t\"publicPort\": ${SERVER_PORT},\r\n\t\"game\": {\r\n\t\t\"name\": \"${SERVER_NAME}\",\r\n\t\t\"password\": \"${SERVER_PASS}\",\r\n\t\t\"passwordAdmin\": \"${ADMIN_PASS}\",\r\n\t\t\"admins\" : [],\r\n\t\t\"scenarioId\": \"${SCENARIO_ID}\",\r\n\t\t\"maxPlayers\": ${MAX_PLAYERS},\r\n\t\t\"visible\": ${VISIBLE},\r\n\t\t\"gameProperties\": {\r\n\t\t\t\"serverMaxViewDistance\": 2500,\r\n\t\t\t\"serverMinGrassDistance\": 50,\r\n\t\t\t\"networkViewDistance\": 1000,\r\n\t\t\t\"disableThirdPerson\": ${DISABLE_THIRD},\r\n\t\t\t\"fastValidation\": true,\r\n\t\t\t\"battlEye\": ${BATTLEYE},\r\n\t\t\t\"VONDisableUI\": false,\r\n\t\t\t\"VONDisableDirectSpeechUI\": false\r\n\t\t},\r\n\t\t\"mods\": []\r\n\t}\r\n}\r\nEOF\r\n\r\necho -e \"\\nArma Reforger Dedicated Server successfully installed!\\n\"",
-            "container": "ghcr.io\/parkervcp\/installers:debian",
-            "entrypoint": "\/bin\/bash"
+            "script": "#!/bin/bash\r\n\r\n## File: Pelican Arma Reforger Egg - egg-arma-reforger.json\r\n## Author: David Wolfe (Red-Thirten)\r\n## Date: 2024/11/28\r\n## License: MIT License\r\n## Image to install with is 'ghcr.io/parkervcp/installers:debian'\r\n\r\n# Check for valid Steam credentials to download Arma Reforger with (requires valid Steam account)\r\nif [[ \"${STEAM_USER}\" == \"\" ]] || [[ \"${STEAM_USER}\" == \"anonymous\" ]] || [[ \"${STEAM_PASS}\" == \"\" ]]; then\r\n    echo -e \"INSTALLATION ERROR: A valid REAL Steam account is required to download the Arma Reforger Dedicated Server.\"\r\n    echo -e \"\\t(\\\"anonymous\\\" account cannot be used. Game ownership is not required.)\"\r\n    exit 1\r\nfi\r\n\r\n## Download and install SteamCMD\r\nexport HOME=/mnt/server\r\ncd /tmp\r\nmkdir -p $HOME/steamcmd $HOME/steamapps\r\ncurl -sSL -o steamcmd.tar.gz https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz\r\ntar -xzvf steamcmd.tar.gz -C $HOME/steamcmd\r\ncd $HOME/steamcmd\r\n\r\n# SteamCMD fails otherwise for some reason, even running as root.\r\nchown -R root:root /mnt\r\n\r\n# Install/Verify game server using SteamCMD\r\n./steamcmd.sh +force_install_dir $HOME \"+login \\\"${STEAM_USER}\\\" \\\"${STEAM_PASS}\\\"\" $( [[ \"${WINDOWS_INSTALL}\" == \"1\" ]] && printf %s '+@sSteamCmdForcePlatformType windows' ) +app_update ${SRCDS_APPID} +app_update 1007 $( [[ -z ${SRCDS_BETAID} ]] || printf %s \"-beta ${SRCDS_BETAID}\" ) $( [[ -z ${SRCDS_BETAPASS} ]] || printf %s \"-betapassword ${SRCDS_BETAPASS}\" ) validate +quit\r\n\r\n# Set up 32 and 64 bit libraries\r\nmkdir -p /mnt/server/.steam/sdk{32,64}\r\ncp -v linux32/steamclient.so /mnt/server/.steam/sdk32/steamclient.so\r\ncp -v linux64/steamclient.so /mnt/server/.steam/sdk64/steamclient.so\r\n\r\n## Arma Reforger setup\r\n# Check for successful installation\r\nif [[ ! -f $HOME/ArmaReforgerServer ]]; then\r\n    echo -e \"\\n\\nSteamCMD failed to install the Arma Reforger Dedicated Server!\"\r\n    echo -e \"\\tTry reinstalling the server again.\\n\"\r\n    exit 1\r\nfi\r\n\r\nmkdir -p $HOME/profile $HOME/tmp\r\n\r\necho -e 'Creating default \"config.json\" configuration file...'\r\ncat > $HOME/config.json << EOF\r\n{\r\n\t\"bindAddress\": \"0.0.0.0\",\r\n\t\"bindPort\": ${SERVER_PORT},\r\n\t\"publicAddress\": \"${SERVER_IP}\",\r\n\t\"publicPort\": ${SERVER_PORT},\r\n\t\"game\": {\r\n\t\t\"name\": \"${SERVER_NAME}\",\r\n\t\t\"password\": \"${SERVER_PASS}\",\r\n\t\t\"passwordAdmin\": \"${ADMIN_PASS}\",\r\n\t\t\"admins\" : [],\r\n\t\t\"scenarioId\": \"${SCENARIO_ID}\",\r\n\t\t\"maxPlayers\": ${MAX_PLAYERS},\r\n\t\t\"visible\": ${VISIBLE},\r\n\t\t\"gameProperties\": {\r\n\t\t\t\"serverMaxViewDistance\": 2500,\r\n\t\t\t\"serverMinGrassDistance\": 50,\r\n\t\t\t\"networkViewDistance\": 1000,\r\n\t\t\t\"disableThirdPerson\": ${DISABLE_THIRD},\r\n\t\t\t\"fastValidation\": true,\r\n\t\t\t\"battlEye\": ${BATTLEYE},\r\n\t\t\t\"VONDisableUI\": false,\r\n\t\t\t\"VONDisableDirectSpeechUI\": false\r\n\t\t},\r\n\t\t\"mods\": []\r\n\t}\r\n}\r\nEOF\r\n\r\necho -e \"\\nArma Reforger Dedicated Server successfully installed!\\n\"",
+            "container": "ghcr.io/parkervcp/installers:debian",
+            "entrypoint": "/bin/bash"
         }
     },
     "variables": [
@@ -57,7 +57,7 @@
             "name": "[REQUIRED] Server Name",
             "description": "This will be the public name of your server as shown in the in-game server browser.",
             "env_variable": "SERVER_NAME",
-            "default_value": "Arma Reforger",
+            "default_value": "Arma Reforger Server",
             "user_viewable": true,
             "user_editable": true,
             "rules": "required|string",
@@ -66,10 +66,10 @@
         },
         {
             "name": "[REQUIRED] Admin Password",
-            "description": "This is the password for the server admin. Use a strong password.",
+            "description": "The password used for your admin account.",
             "env_variable": "ADMIN_PASS",
-            "default_value": "",
-            "user_viewable": false,
+            "default_value": "admin",
+            "user_viewable": true,
             "user_editable": true,
             "rules": "required|string",
             "sort": 4,
@@ -77,7 +77,7 @@
         },
         {
             "name": "[OPTIONAL] Server Password",
-            "description": "This password is required for players to join your server.",
+            "description": "Password required for players to join the server.",
             "env_variable": "SERVER_PASS",
             "default_value": "",
             "user_viewable": true,
@@ -87,111 +87,59 @@
             "field_type": "password"
         },
         {
-            "name": "[OPTIONAL] Server Port",
-            "description": "Port number used for the server's network traffic (default is 2302).",
-            "env_variable": "SERVER_PORT",
-            "default_value": "2302",
-            "user_viewable": true,
-            "user_editable": true,
-            "rules": "integer",
-            "sort": 6,
-            "field_type": "number"
-        },
-        {
-            "name": "[OPTIONAL] Scenario ID",
-            "description": "The ID of the scenario you want to run. If none is specified, it will default to the Arma Reforger template scenario.",
+            "name": "[REQUIRED] Scenario ID",
+            "description": "The ID of the scenario to run.",
             "env_variable": "SCENARIO_ID",
-            "default_value": "template",
+            "default_value": "",
             "user_viewable": true,
             "user_editable": true,
-            "rules": "string",
-            "sort": 7,
+            "rules": "required|string",
+            "sort": 6,
             "field_type": "text"
         },
         {
             "name": "[OPTIONAL] Max Players",
-            "description": "Maximum number of players that can connect to the server at the same time.",
+            "description": "The maximum number of players allowed to join your server.",
             "env_variable": "MAX_PLAYERS",
-            "default_value": "30",
+            "default_value": "64",
             "user_viewable": true,
             "user_editable": true,
-            "rules": "integer",
-            "sort": 8,
+            "rules": "integer|min:1|max:64",
+            "sort": 7,
             "field_type": "number"
         },
         {
-            "name": "[OPTIONAL] Disable Third Person",
-            "description": "Disable third person camera mode for players.",
-            "env_variable": "DISABLE_THIRD",
-            "default_value": "false",
-            "user_viewable": true,
-            "user_editable": true,
-            "rules": "boolean",
-            "sort": 9,
-            "field_type": "select",
-            "options": [
-                {
-                    "name": "No",
-                    "value": "false"
-                },
-                {
-                    "name": "Yes",
-                    "value": "true"
-                }
-            ]
-        },
-        {
-            "name": "[OPTIONAL] Battleye",
-            "description": "Enable or disable Battleye anti-cheat.",
-            "env_variable": "BATTLEYE",
-            "default_value": "true",
-            "user_viewable": true,
-            "user_editable": true,
-            "rules": "boolean",
-            "sort": 10,
-            "field_type": "select",
-            "options": [
-                {
-                    "name": "Yes",
-                    "value": "true"
-                },
-                {
-                    "name": "No",
-                    "value": "false"
-                }
-            ]
-        },
-        {
-            "name": "[OPTIONAL] Visibility",
-            "description": "Visibility of the server in the server list. Set to 'false' to make it private.",
+            "name": "[REQUIRED] Visible",
+            "description": "Whether the server is visible on the public server list.",
             "env_variable": "VISIBLE",
             "default_value": "true",
             "user_viewable": true,
             "user_editable": true,
-            "rules": "boolean",
-            "sort": 11,
-            "field_type": "select",
-            "options": [
-                {
-                    "name": "Visible",
-                    "value": "true"
-                },
-                {
-                    "name": "Private",
-                    "value": "false"
-                }
-            ]
+            "rules": "required|boolean",
+            "sort": 8,
+            "field_type": "boolean"
         },
         {
-            "name": "[OPTIONAL] Steam Game Mods",
-            "description": "List of mods to load for the server (in the format 'modid', 'modid2'). Leave empty for none.",
-            "env_variable": "MODS",
-            "default_value": "",
+            "name": "[REQUIRED] Disable Third Person",
+            "description": "Disable third person mode.",
+            "env_variable": "DISABLE_THIRD",
+            "default_value": "false",
             "user_viewable": true,
             "user_editable": true,
-            "rules": "string",
-            "sort": 12,
-            "field_type": "text"
+            "rules": "required|boolean",
+            "sort": 9,
+            "field_type": "boolean"
+        },
+        {
+            "name": "[REQUIRED] BattlEye",
+            "description": "Enable or disable BattlEye anti-cheat.",
+            "env_variable": "BATTLEYE",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "sort": 10,
+            "field_type": "boolean"
         }
     ]
 }
